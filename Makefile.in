@@ -1,0 +1,85 @@
+#############################################################################
+# Don't touch these...
+#############################################################################
+
+this_makefile := ${lastword ${MAKEFILE_LIST}}
+SHELL = @bash@ -o pipefail -o errexit -o nounset
+.SECONDARY:
+
+#############################################################################
+# things to set / override
+#############################################################################
+
+#HELP:Build for @PACKAGE_NAME@ (@PACKAGE_TARNAME@)
+
+srcdir = @srcdir@
+abs_srcdir = @abs_srcdir@
+builddir = @builddir@
+abs_builddir = @abs_builddir@
+PACKAGE_TARNAME = @PACKAGE_TARNAME@
+macports_root_dir = @macports_root_dir@
+
+# PROGRAMS
+# autoconf names
+MKDIR_P = @MKDIR_P@
+INSTALL = @INSTALL@
+SED = @SED@
+m4 = @m4@
+sudo = @sudo@
+
+config_files = @config_files@
+
+src_files=${srcdir}/src/etc/cron.daily/update-macports
+all_files=${src_files:${srcdir}/src/%=${builddir}/build/%}
+install_files=${src_files:${srcdir}/src/%=${macports_root_dir}/%}
+
+#############################################################################
+#HELP:Default target is "all". Targets include:
+.DEFAULT_GOAL = all
+
+.PHONY: all #   Build everything
+all: ${all_files}
+
+.PHONY: install #   Install to $macports_root_dir (default "@macports_root_dir@")
+install: ${install_files}
+
+.PHONY: uninstall #   Remove installed files
+uninstall:
+	${RM} ${install_files}
+
+.PHONY: clean #   Clean build products
+clean:
+	${RM} ${all_files}
+	${RM} -r ${builddir}/build
+
+.PHONY: distclean #   Clean build & configure products
+distclean: clean
+	${RM} ${config_files} config.log config.status
+
+#############################################################################
+# all
+
+${builddir}/build/%: ${srcdir}/src/%
+	${MKDIR_P} ${dir $@}
+	${m4} -P \
+	  -DM_MACPORTS_ROOT_DIR="${macports_root_dir}" \
+	  -DM_INSTALL="${INSTALL}" \
+	  -DM_ABS_SRCDIR="${abs_srcdir}" \
+	  -DM_ABS_BUILDDIR="${abs_builddir}" \
+	  $< > $@
+
+#############################################################################
+# install
+
+${macports_root_dir}/etc/cron.daily/%: ${builddir}/build/etc/cron.daily/%
+	@ ${MKDIR_P} ${dir $@}
+	${sudo} ${INSTALL} -m 744 -o root -g admin -- $< $@
+
+#############################################################################
+# make help: this must be the last target
+
+.PHONY: help #   Print this help
+help:
+	@ ${SED} -e '/^\.PHONY:/s/^\.PHONY: *\([^ #]*\) *\#\( *\)\([^ ].*\)/\2\1: \3/p;/^[^#]*#HELP:/s/[^#]*#HELP:\(.*\)/\1/p;d' ${this_makefile}
+
+# don't put anything after this

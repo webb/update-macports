@@ -1,0 +1,38 @@
+m4_changequote([[[,]]])m4_dnl
+m4_changecom(,)m4_dnl
+#!/bin/bash
+
+# Source is in M_ABS_SRCDIR
+# Build is in M_ABS_BUILDDIR
+
+macports_root_dir="M_MACPORTS_ROOT_DIR"
+install="M_INSTALL"
+
+log_dir=${macports_root_dir}/var/log
+log_file=${log_dir}/update-macports.txt
+port=${macports_root_dir}/bin/port
+
+date=/bin/date
+
+# dir perms = 755, file perms = 644
+umask 022
+
+if [[ ! -d $log_dir ]]
+then $install --directory --mode=755 "$log_dir"
+fi
+
+run () {
+    printf '# running'
+    printf ' %q' "$@"
+    printf '\n'
+    "$@"
+    printf '# exit status %d @ %s\n' "$?" "$("$date")"
+}
+
+{
+    printf '#\n# %s\n#\n' "$("$date")"
+    run "$port" -d uninstall inactive
+    run "$port" -d selfupdate
+    run "$port" -d upgrade outdated
+    run "$port" -d uninstall inactive || true
+} >> "$log_file" 2>&1
