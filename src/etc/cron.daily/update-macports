@@ -25,7 +25,10 @@ run () {
     printf '# running'
     printf ' %q' "$@"
     printf '\n'
-    "$@"
+    if "$@"
+    then echo '# OK'
+    else echo '# returned $?'
+    fi
     printf '# exit status %d @ %s\n' "$?" "$("$date")"
 }
 
